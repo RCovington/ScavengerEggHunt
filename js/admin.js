@@ -207,11 +207,11 @@ function parsePuzzlesFromCSV(text) {
     var puzzles = [];
     for (var r = 0; r < dataRows.length; r++) {
         var drow = dataRows[r];
-        var puzzle = (drow[colPuzzle] || '').trim();
-        var answer = (drow[colAnswer] || '').trim();
-        var riddle = (drow[colRiddle] || '').trim();
-        var riddleAnswer = (drow[colRiddleAnswer] || '').trim();
-        var explanation = colExplanation >= 0 ? (drow[colExplanation] || '').trim() : '';
+        var puzzle = normalizeText((drow[colPuzzle] || '').trim());
+        var answer = normalizeText((drow[colAnswer] || '').trim());
+        var riddle = normalizeText((drow[colRiddle] || '').trim());
+        var riddleAnswer = normalizeText((drow[colRiddleAnswer] || '').trim());
+        var explanation = colExplanation >= 0 ? normalizeText((drow[colExplanation] || '').trim()) : '';
 
         if (!puzzle || !answer || !riddle || !riddleAnswer) {
             continue;
@@ -298,11 +298,11 @@ function renderPuzzlesList() {
             '<span class="puzzle-location">&#x1F4CD; ' + escapeHtml(location) + '</span>' +
             '</div>' +
             '<div class="puzzle-body">' +
-            '<p><strong>Puzzle:</strong> ' + escapeHtml(puzzlePreview) + '</p>' +
+            '<p><strong>Puzzle:</strong> ' + textToHtml(puzzlePreview) + '</p>' +
             (puzzle.puzzleImage ? '<p><strong>Image:</strong> &#x2713;</p>' : '') +
             '<p><strong>Answer(s):</strong> ' + escapeHtml(puzzle.puzzleAnswer) + '</p>' +
-            (puzzle.puzzleExplanation ? '<p><strong>Explanation:</strong> ' + escapeHtml(puzzle.puzzleExplanation) + '</p>' : '') +
-            '<p><strong>Riddle:</strong> ' + escapeHtml(riddlePreview) + '</p>' +
+            (puzzle.puzzleExplanation ? '<p><strong>Explanation:</strong> ' + textToHtml(puzzle.puzzleExplanation) + '</p>' : '') +
+            '<p><strong>Riddle:</strong> ' + textToHtml(riddlePreview) + '</p>' +
             '<p><strong>Next Location:</strong> ' + escapeHtml(puzzle.riddleAnswer) + '</p>' +
             '</div>' +
             '<div class="puzzle-actions">' +
@@ -419,10 +419,10 @@ function renderMasterTable(game) {
         return '<tr>' +
             '<td>#' + (i + 1) + '</td>' +
             '<td>' + escapeHtml(location) + '</td>' +
-            '<td>' + escapeHtml(puzzle.puzzle) + (puzzle.puzzleImage ? ' <em>[+Image]</em>' : '') + '</td>' +
+            '<td>' + textToHtml(puzzle.puzzle) + (puzzle.puzzleImage ? ' <em>[+Image]</em>' : '') + '</td>' +
             '<td>' + escapeHtml(puzzle.puzzleAnswer) + '</td>' +
-            '<td>' + escapeHtml(puzzle.puzzleExplanation || '') + '</td>' +
-            '<td>' + escapeHtml(puzzle.riddle) + '</td>' +
+            '<td>' + textToHtml(puzzle.puzzleExplanation || '') + '</td>' +
+            '<td>' + textToHtml(puzzle.riddle) + '</td>' +
             '</tr>';
     }).join('');
 
@@ -439,8 +439,12 @@ async function renderQRCodes(game, baseUrl) {
     var container = document.getElementById('qr-codes-container');
     container.innerHTML = '<p style="text-align:center; grid-column: 1/-1;">Generating QR codes&hellip;</p>';
 
-    // Build all URLs (encrypt riddles)
-    var entries = [];
+    var slug = game.name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+    // Build puzzle data for the JSON data file
+    var puzzlesData = [];
     for (var i = 0; i < game.puzzles.length; i++) {
         var puzzle = game.puzzles[i];
         var isWildcard = puzzle.puzzleAnswer.trim() === '*';
@@ -453,19 +457,36 @@ async function renderQRCodes(game, baseUrl) {
                 encryptedArray.push(await CryptoUtils.encrypt(puzzle.riddle, answers[a]));
             }
         }
-        var payload = {
+        var entry = {
             p: puzzle.puzzle,
             i: puzzle.puzzleImage || '',
-            ea: encryptedArray,
-            g: game.name,
-            n: i + 1,
-            t: game.puzzles.length
+            ea: encryptedArray
         };
-        if (isWildcard) payload.w = 1;
-        var encoded = CryptoUtils.encodePayload(payload);
-        var url = baseUrl + '/play.html#' + encoded;
-        var location = i === 0 ? 'Start' : game.puzzles[i - 1].riddleAnswer;
-        entries.push({ url: url, location: location, index: i });
+        if (isWildcard) entry.w = 1;
+        puzzlesData.push(entry);
+    }
+
+    var gameDataFile = {
+        g: game.name,
+        t: game.puzzles.length,
+        puzzles: puzzlesData
+    };
+
+    // Store for download
+    window._generatedGameData = gameDataFile;
+    window._generatedGameSlug = slug;
+
+    // Show download button
+    document.getElementById('download-data-section').classList.remove('hidden');
+    document.getElementById('data-filename').textContent = slug + '.json';
+    document.getElementById('data-folder-path').textContent = 'data/' + slug + '.json';
+
+    // Build QR entries with short URLs
+    var entries = [];
+    for (var j = 0; j < game.puzzles.length; j++) {
+        var location = j === 0 ? 'Start' : game.puzzles[j - 1].riddleAnswer;
+        var url = baseUrl + '/play.html#' + encodeURIComponent(slug) + '/' + (j + 1);
+        entries.push({ url: url, location: location, index: j });
     }
 
     // Render QR code cards
@@ -481,9 +502,9 @@ async function renderQRCodes(game, baseUrl) {
     }).join('');
 
     // Generate QR code images
-    for (var j = 0; j < entries.length; j++) {
-        new QRCode(document.getElementById('qr-' + entries[j].index), {
-            text: entries[j].url,
+    for (var k = 0; k < entries.length; k++) {
+        new QRCode(document.getElementById('qr-' + entries[k].index), {
+            text: entries[k].url,
             width: 256,
             height: 256,
             colorDark: '#000000',
@@ -502,6 +523,20 @@ function downloadQR(elementId, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function downloadGameData() {
+    if (!window._generatedGameData) return;
+    var json = JSON.stringify(window._generatedGameData);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = window._generatedGameSlug + '.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 function backToEditor() {

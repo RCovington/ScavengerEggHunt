@@ -108,6 +108,21 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+function normalizeText(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/\\n/g, '\n')
+        .replace(/[\u2018\u2019\u201A\uFFFD]/g, "'")
+        .replace(/[\u201C\u201D\u201E]/g, '"')
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/\u2026/g, '...')
+        .replace(/\u00A0/g, ' ');
+}
+
+function textToHtml(str) {
+    return escapeHtml(normalizeText(str)).replace(/\n/g, '<br>');
+}
+
 function isValidImageUrl(url) {
     if (!url) return false;
     try {
