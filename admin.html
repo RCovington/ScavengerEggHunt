@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Egg Hunt Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="js/crypto.js"></script>
+</head>
+
+<body class="admin-page">
+    <header>
+        <h1>&#x1F95A; Egg Hunt Manager</h1>
+        <button id="logout-btn" class="btn btn-sm hidden" onclick="logout()">Logout</button>
+    </header>
+
+    <main>
+        <!-- Setup Section (first time) -->
+        <div id="setup-section" class="section hidden">
+            <div class="auth-card">
+                <h2>&#x1F510; First Time Setup</h2>
+                <p>Create a password to protect your egg hunts.</p>
+                <div class="form-group">
+                    <label for="setup-password">Password</label>
+                    <input type="password" id="setup-password" placeholder="Enter password">
+                </div>
+                <div class="form-group">
+                    <label for="setup-confirm">Confirm Password</label>
+                    <input type="password" id="setup-confirm" placeholder="Confirm password"
+                        onkeydown="if(event.key==='Enter')setupPassword()">
+                </div>
+                <button class="btn btn-primary" onclick="setupPassword()">Set Password</button>
+            </div>
+        </div>
+
+        <!-- Login Section -->
+        <div id="login-section" class="section hidden">
+            <div class="auth-card">
+                <h2>&#x1F510; Login</h2>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter password"
+                        onkeydown="if(event.key==='Enter')login()">
+                </div>
+                <button class="btn btn-primary" onclick="login()">Login</button>
+            </div>
+        </div>
+
+        <!-- Games List Section -->
+        <div id="games-section" class="section hidden">
+            <div class="section-header">
+                <h2>Your Egg Hunts</h2>
+                <button class="btn btn-primary" onclick="createGame()">+ New Hunt</button>
+            </div>
+            <div id="games-list"></div>
+        </div>
+
+        <!-- Create Game Section -->
+        <div id="create-game-section" class="section hidden">
+            <div class="section-header">
+                <button class="btn btn-sm" onclick="backToGames()">&larr; Back</button>
+                <h2>Create New Egg Hunt</h2>
+            </div>
+            <div class="auth-card" style="max-width:600px;">
+                <div class="form-group" style="text-align:left;">
+                    <label for="new-game-name">Game Name *</label>
+                    <input type="text" id="new-game-name" placeholder="e.g., Backyard Easter Hunt 2026">
+                </div>
+                <div class="form-group" style="text-align:left;">
+                    <label for="csv-upload">Upload Puzzles CSV <small>(optional)</small></label>
+                    <input type="file" id="csv-upload" accept=".csv" style="padding:0.5rem 0;">
+                    <small style="display:block; color: var(--text-muted); margin-top:0.3rem;">Columns: Number, Puzzle, Puzzle Answer, Puzzle Explanation, Riddle, Riddle Answer</small>
+                    <small style="display:block; color: var(--text-muted);">Separate multiple correct answers with commas in the Puzzle Answer column.</small>
+                </div>
+                <button class="btn btn-primary" style="width:100%;" onclick="submitNewGame()">Create Hunt</button>
+                <button class="btn btn-sm" style="margin-top:0.8rem;" onclick="downloadCSVTemplate()">&#x2B07; Download CSV Template</button>
+            </div>
+        </div>
+
+        <!-- Game Editor Section -->
+        <div id="editor-section" class="section hidden">
+            <div class="section-header">
+                <button class="btn btn-sm" onclick="backToGames()">&larr; Back</button>
+                <h2 id="editor-title"></h2>
+            </div>
+
+            <div class="form-group">
+                <label for="base-url">Site URL (used for QR code links)</label>
+                <input type="url" id="base-url"
+                    placeholder="https://yourusername.github.io/ScavengerEggHunt">
+                <small style="color: var(--text-muted);">Set this to your GitHub Pages URL before generating QR codes.</small>
+            </div>
+
+            <h3>Puzzles</h3>
+            <div id="puzzles-list"></div>
+
+            <div class="puzzle-form-card">
+                <h3 id="form-title">Add New Puzzle</h3>
+                <div class="form-group">
+                    <label for="puzzle-text">Puzzle Text *</label>
+                    <textarea id="puzzle-text" rows="3"
+                        placeholder="The puzzle or question to solve..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="puzzle-image">Puzzle Image URL <small>(optional)</small></label>
+                    <input type="url" id="puzzle-image" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="form-group">
+                    <label for="puzzle-answer">Answer(s) * <small>(comma-separated if multiple,
+                            case-insensitive)</small></label>
+                    <input type="text" id="puzzle-answer"
+                        placeholder="e.g., 42 or fish, marlin, swordfish">
+                </div>
+                <div class="form-group">
+                    <label for="puzzle-explanation">Explanation <small>(optional, admin-only &mdash;
+                            never shown to players)</small></label>
+                    <textarea id="puzzle-explanation" rows="2"
+                        placeholder="Background info about the answer..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="puzzle-riddle">Riddle * <small>(clue shown after correct answer, hints
+                            at next location)</small></label>
+                    <textarea id="puzzle-riddle" rows="3"
+                        placeholder="A clue hinting where the next QR code is hidden..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="puzzle-riddle-answer">Riddle Answer / Next Location *
+                        <small>(where to place the next QR code)</small></label>
+                    <input type="text" id="puzzle-riddle-answer"
+                        placeholder="e.g., Under the old oak tree">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="form-submit-btn"
+                        onclick="addOrUpdatePuzzle()">Add Puzzle</button>
+                    <button class="btn btn-secondary hidden" id="form-cancel-btn"
+                        onclick="cancelEdit()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="generate-section">
+                <button class="btn btn-primary btn-lg" onclick="generateOutput()">&#x1F95A; Generate QR
+                    Codes &amp; Table</button>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div id="output-section" class="section hidden">
+            <div class="section-header">
+                <button class="btn btn-sm" onclick="backToEditor()">&larr; Back to Editor</button>
+                <h2 id="output-title"></h2>
+            </div>
+
+            <div class="output-actions">
+                <button class="btn btn-primary" onclick="window.print()">&#x1F5A8;&#xFE0F; Print</button>
+            </div>
+
+            <h3>Master Reference Table</h3>
+            <p class="hint">This table is for the hunt organizer only &mdash; never share it with players!</p>
+            <div class="table-container">
+                <table class="master-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>QR Location</th>
+                            <th>Puzzle</th>
+                            <th>Answer(s)</th>
+                            <th>Explanation</th>
+                            <th>Riddle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="master-table-body"></tbody>
+                </table>
+            </div>
+
+            <h3>QR Codes</h3>
+            <p class="hint">Place each QR code at its labeled location.</p>
+            <div id="qr-codes-container" class="qr-grid"></div>
+        </div>
+    </main>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

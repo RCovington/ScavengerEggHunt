@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easter Egg Hunt</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/crypto.js"></script>
+</head>
+
+<body class="play-page">
+    <div id="confetti-container"></div>
+
+    <div class="play-container">
+        <div class="play-header">
+            <h1 id="game-name">&#x1F95A; Easter Egg Hunt</h1>
+            <p id="puzzle-number" class="puzzle-counter"></p>
+        </div>
+
+        <div id="puzzle-container">
+            <div id="puzzle-content" class="puzzle-display"></div>
+
+            <div id="answer-section" class="hidden">
+                <div class="answer-form">
+                    <input type="text" id="answer-input" placeholder="Enter your answer..."
+                        autocomplete="off">
+                    <button id="submit-btn" class="btn btn-primary" onclick="submitAnswer()">Submit
+                        Answer</button>
+                </div>
+            </div>
+
+            <div id="timer-section" class="hidden">
+                <div class="timer-display">
+                    <p>&#x274C; Wrong answer!</p>
+                    <p>Try again in:</p>
+                    <div id="timer-display" class="timer">3:00</div>
+                </div>
+            </div>
+
+            <div id="riddle-section" class="hidden">
+                <div id="riddle-content" class="riddle-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/play.js"></script>
+</body>
+
+</html>
